@@ -29,6 +29,7 @@ app = typer.Typer(
 
 console = Console()
 EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
+_config_path: Path | None = None
 
 # ---------------------------------------------------------------------------
 # CLI input: prompt_toolkit for editing, paste, history, and display
@@ -143,9 +144,20 @@ def main(
     version: bool = typer.Option(
         None, "--version", "-v", callback=version_callback, is_eager=True
     ),
+    config: Path = typer.Option(
+        None, "--config", "-c", help="Path to config file (default: ~/.nanobot/config.json)",
+    ),
 ):
     """nanobot - Personal AI Assistant."""
-    pass
+    global _config_path
+    if config is not None:
+        _config_path = config
+
+
+def _load() -> "Config":
+    """Load config, respecting the --config flag."""
+    from nanobot.config.loader import load_config
+    return load_config(_config_path)
 
 
 # ============================================================================
@@ -156,12 +168,12 @@ def main(
 @app.command()
 def onboard():
     """Initialize nanobot configuration and workspace."""
-    from nanobot.config.loader import get_config_path, load_config, save_config
+    from nanobot.config.loader import get_config_path, save_config
     from nanobot.config.schema import Config
     from nanobot.utils.helpers import get_workspace_path
-    
+
     config_path = get_config_path()
-    
+
     if config_path.exists():
         console.print(f"[yellow]Config already exists at {config_path}[/yellow]")
         console.print("  [bold]y[/bold] = overwrite with defaults (existing values will be lost)")
@@ -171,7 +183,7 @@ def onboard():
             save_config(config)
             console.print(f"[green]✓[/green] Config reset to defaults at {config_path}")
         else:
-            config = load_config()
+            config = _load()
             save_config(config)
             console.print(f"[green]✓[/green] Config refreshed at {config_path} (existing values preserved)")
     else:
@@ -328,7 +340,7 @@ def gateway(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """Start the nanobot gateway."""
-    from nanobot.config.loader import load_config, get_data_dir
+    from nanobot.config.loader import get_data_dir
     from nanobot.bus.queue import MessageBus
     from nanobot.agent.loop import AgentLoop
     from nanobot.channels.manager import ChannelManager
@@ -336,14 +348,14 @@ def gateway(
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronJob
     from nanobot.heartbeat.service import HeartbeatService
-    
+
     if verbose:
         import logging
         logging.basicConfig(level=logging.DEBUG)
-    
+
     console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
-    
-    config = load_config()
+
+    config = _load()
     bus = MessageBus()
     provider = _make_provider(config)
     session_manager = SessionManager(config.workspace_path)
@@ -450,13 +462,13 @@ def agent(
     logs: bool = typer.Option(False, "--logs/--no-logs", help="Show nanobot runtime logs during chat"),
 ):
     """Interact with the agent directly."""
-    from nanobot.config.loader import load_config, get_data_dir
+    from nanobot.config.loader import get_data_dir
     from nanobot.bus.queue import MessageBus
     from nanobot.agent.loop import AgentLoop
     from nanobot.cron.service import CronService
     from loguru import logger
-    
-    config = load_config()
+
+    config = _load()
     
     bus = MessageBus()
     provider = _make_provider(config)
@@ -608,9 +620,7 @@ app.add_typer(channels_app, name="channels")
 @channels_app.command("status")
 def channels_status():
     """Show channel status."""
-    from nanobot.config.loader import load_config
-
-    config = load_config()
+    config = _load()
 
     table = Table(title="Channel Status")
     table.add_column("Channel", style="cyan")
@@ -760,9 +770,8 @@ def _get_bridge_dir() -> Path:
 def channels_login():
     """Link device via QR code."""
     import subprocess
-    from nanobot.config.loader import load_config
-    
-    config = load_config()
+
+    config = _load()
     bridge_dir = _get_bridge_dir()
     
     console.print(f"{__logo__} Starting bridge...")
@@ -938,14 +947,14 @@ def cron_run(
 ):
     """Manually run a job."""
     from loguru import logger
-    from nanobot.config.loader import load_config, get_data_dir
+    from nanobot.config.loader import get_data_dir
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronJob
     from nanobot.bus.queue import MessageBus
     from nanobot.agent.loop import AgentLoop
     logger.disable("nanobot")
 
-    config = load_config()
+    config = _load()
     provider = _make_provider(config)
     bus = MessageBus()
     agent_loop = AgentLoop(
@@ -999,10 +1008,10 @@ def cron_run(
 @app.command()
 def status():
     """Show nanobot status."""
-    from nanobot.config.loader import load_config, get_config_path
+    from nanobot.config.loader import get_config_path
 
     config_path = get_config_path()
-    config = load_config()
+    config = _load()
     workspace = config.workspace_path
 
     console.print(f"{__logo__} nanobot Status\n")
