@@ -55,6 +55,7 @@ class DiscordChannel(BaseChannel):
         self._heartbeat_task: asyncio.Task | None = None
         self._typing_tasks: dict[str, asyncio.Task] = {}
         self._http: httpx.AsyncClient | None = None
+        self._bot_user_id: str | None = None
 
     async def start(self) -> None:
         """Start the Discord gateway connection."""
@@ -170,7 +171,9 @@ class DiscordChannel(BaseChannel):
                 await self._start_heartbeat(interval_ms / 1000)
                 await self._identify()
             elif op == 0 and event_type == "READY":
-                logger.info("Discord gateway READY")
+                user = (payload or {}).get("user") or {}
+                self._bot_user_id = str(user.get("id", ""))
+                logger.info("Discord gateway READY (bot_user_id={})", self._bot_user_id)
             elif op == 0 and event_type == "MESSAGE_CREATE":
                 await self._handle_message_create(payload)
             elif op == 7:
@@ -218,6 +221,34 @@ class DiscordChannel(BaseChannel):
 
         self._heartbeat_task = asyncio.create_task(heartbeat_loop())
 
+    def _should_respond(self, payload: dict[str, Any], content: str) -> bool:
+        """Check if the bot should respond based on group_policy.
+
+        DMs (no guild_id) always respond. Server messages respect the policy.
+        """
+        guild_id = payload.get("guild_id")
+        if not guild_id:
+            return True  # DM — always respond
+
+        policy = getattr(self.config, "group_policy", "mention")
+
+        if policy == "open":
+            return True
+        elif policy == "allowlist":
+            allowed_channels = getattr(self.config, "group_allow_from", [])
+            channel_id = str(payload.get("channel_id", ""))
+            return channel_id in allowed_channels
+        else:  # "mention" (default)
+            if not self._bot_user_id:
+                return False
+            return f"<@{self._bot_user_id}>" in content
+
+    def _strip_bot_mention(self, content: str) -> str:
+        """Remove the bot's @mention from message content."""
+        if self._bot_user_id:
+            content = content.replace(f"<@{self._bot_user_id}>", "").strip()
+        return content
+
     async def _handle_message_create(self, payload: dict[str, Any]) -> None:
         """Handle incoming Discord messages."""
         author = payload.get("author") or {}
@@ -233,6 +264,11 @@ class DiscordChannel(BaseChannel):
 
         if not self.is_allowed(sender_id):
             return
+
+        if not self._should_respond(payload, content):
+            return
+
+        content = self._strip_bot_mention(content)
 
         content_parts = [content] if content else []
         media_paths: list[str] = []
