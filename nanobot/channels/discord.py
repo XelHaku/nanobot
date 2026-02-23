@@ -229,16 +229,32 @@ class DiscordChannel(BaseChannel):
         if self.config.group_policy == "open":
             return True
         if self.config.group_policy == "mention":
-            return self._bot_user_id is not None and f"<@{self._bot_user_id}>" in content
+            # Direct @mention
+            if self._bot_user_id and f"<@{self._bot_user_id}>" in content:
+                return True
+            # Role @mention (e.g. @Sages)
+            for role_id in self.config.role_ids:
+                if f"<@&{role_id}>" in content:
+                    return True
+            return False
         if self.config.group_policy == "allowlist":
             return channel_id in self.config.group_allow_from
         return False
 
-    def _strip_bot_mention(self, text: str) -> str:
-        """Remove the bot @mention from message text."""
-        if not text or not self._bot_user_id:
+    def _humanize_mentions(self, text: str) -> str:
+        """Replace bot mentions with readable names, strip self-mention."""
+        if not text:
             return text
-        return re.sub(rf"<@{re.escape(self._bot_user_id)}>\s*", "", text).strip()
+        # Strip own mention
+        if self._bot_user_id:
+            text = re.sub(rf"<@{re.escape(self._bot_user_id)}>\s*", "", text)
+        # Replace sibling bot mentions with @Name
+        for bot_id, name in self.config.sibling_bots.items():
+            text = text.replace(f"<@{bot_id}>", f"@{name}")
+        # Strip role mentions (just remove the raw format)
+        for role_id in self.config.role_ids:
+            text = re.sub(rf"<@&{re.escape(role_id)}>\s*", "", text)
+        return text.strip()
 
     async def _handle_message_create(self, payload: dict[str, Any]) -> None:
         """Handle incoming Discord messages."""
@@ -268,7 +284,7 @@ class DiscordChannel(BaseChannel):
             logger.debug("Discord: skipping (policy={}, mention check failed)", self.config.group_policy)
             return
 
-        content = self._strip_bot_mention(content)
+        content = self._humanize_mentions(content)
         content_parts = [content] if content else []
         media_paths: list[str] = []
         media_dir = Path.home() / ".nanobot" / "media"

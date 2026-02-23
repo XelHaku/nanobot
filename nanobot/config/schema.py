@@ -61,6 +61,8 @@ class DiscordConfig(Base):
     intents: int = 37377  # GUILDS + GUILD_MESSAGES + DIRECT_MESSAGES + MESSAGE_CONTENT
     group_policy: str = "mention"  # "open" | "mention" | "allowlist"
     group_allow_from: list[str] = Field(default_factory=list)  # Channel IDs when allowlist
+    role_ids: list[str] = Field(default_factory=list)  # Role IDs that trigger this bot (e.g. @Sages)
+    sibling_bots: dict[str, str] = Field(default_factory=dict)  # Bot user ID → display name
 
 
 class EmailConfig(Base):
