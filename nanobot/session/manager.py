@@ -43,7 +43,13 @@ class Session:
         self.updated_at = datetime.now()
     
     def get_history(self, max_messages: int = 500) -> list[dict[str, Any]]:
-        """Get recent messages in LLM format, preserving tool metadata."""
+        """Get recent messages in LLM format, preserving tool metadata.
+
+        The tail-slice may cut an assistant message with tool_calls while
+        keeping its orphaned tool-result messages.  We trim those from the
+        front so every tool result has a preceding assistant tool_call and
+        every assistant tool_call has its following tool results.
+        """
         out: list[dict[str, Any]] = []
         for m in self.messages[-max_messages:]:
             entry: dict[str, Any] = {"role": m["role"], "content": m.get("content", "")}
@@ -51,6 +57,29 @@ class Session:
                 if k in m:
                     entry[k] = m[k]
             out.append(entry)
+
+        # Drop orphaned messages from the front of the window.
+        while out:
+            first = out[0]
+            if first["role"] == "tool":
+                # Tool result whose assistant+tool_calls was sliced off.
+                out.pop(0)
+            elif first["role"] == "assistant" and first.get("tool_calls"):
+                # Assistant with tool_calls — check all results are present.
+                expected_ids = {
+                    tc.get("id") for tc in first["tool_calls"] if tc.get("id")
+                }
+                found_ids = {
+                    m.get("tool_call_id") for m in out[1:]
+                    if m["role"] == "tool" and m.get("tool_call_id")
+                }
+                if not expected_ids.issubset(found_ids):
+                    out.pop(0)
+                else:
+                    break
+            else:
+                break
+
         return out
     
     def clear(self) -> None:

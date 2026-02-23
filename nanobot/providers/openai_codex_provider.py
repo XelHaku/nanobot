@@ -186,6 +186,16 @@ def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[st
             )
             continue
 
+    # Drop orphaned function_call_output items whose function_call was
+    # trimmed from the conversation window (causes HTTP 400).
+    known_call_ids = {
+        item["call_id"] for item in input_items if item.get("type") == "function_call"
+    }
+    input_items = [
+        item for item in input_items
+        if item.get("type") != "function_call_output" or item.get("call_id") in known_call_ids
+    ]
+
     return system_prompt, input_items
 
 

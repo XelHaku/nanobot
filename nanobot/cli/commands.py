@@ -399,8 +399,8 @@ def gateway(
         workspace=config.workspace_path,
         on_heartbeat=on_heartbeat,
         on_notify=on_heartbeat_notify,
-        interval_s=config.heartbeat.interval_seconds,
-        enabled=config.heartbeat.enabled,
+        interval_s=30 * 60,  # 30 minutes
+        enabled=True
     )
     
     if channels.enabled_channels:
