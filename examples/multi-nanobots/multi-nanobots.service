@@ -6,6 +6,12 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=YOUR_USERNAME
+# --- Host tool access for agent exec commands ---
+# systemd does not source ~/.bashrc, so tools like node, go, flutter, cargo
+# won't be available to agents unless you add them here.
+# Run `echo $PATH` in your terminal and paste the result below:
+# Environment=PATH=/home/you/.nvm/versions/node/v20.x.x/bin:/usr/local/go/bin:/home/you/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Environment=GOPATH=/home/you/go
 WorkingDirectory=/path/to/multi-nanobots
 ExecStart=/usr/local/bin/supervisord -c /path/to/multi-nanobots/supervisord.conf
 ExecStop=/usr/local/bin/supervisorctl -c /path/to/multi-nanobots/supervisord.conf shutdown

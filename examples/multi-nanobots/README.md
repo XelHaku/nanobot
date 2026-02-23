@@ -200,6 +200,73 @@ To run the fleet automatically on boot:
    journalctl -u multi-nanobots -f         # View logs
    ```
 
+### Host Tool Access (PATH for systemd)
+
+When agents run under systemd, the `exec` tool only sees systemd's minimal PATH:
+
+```
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+Tools installed via version managers (nvm, Flutter SDK, Go, Cargo, etc.) are **not available** because systemd does not source `~/.bashrc` or `~/.profile`.
+
+**Fix:** Add `Environment=` lines to your service file before installing it:
+
+```ini
+[Service]
+# Expose host development tools to agent exec commands
+# Build this PATH from your ~/.bashrc exports — include every tool your agents need
+Environment=PATH=/home/you/.nvm/versions/node/v20.x.x/bin:/usr/local/go/bin:/home/you/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Add any other env vars your tools need
+Environment=GOPATH=/home/you/go
+```
+
+**How to build your PATH:**
+
+```bash
+# 1. Print your interactive shell's PATH (this has everything)
+echo $PATH
+
+# 2. Copy it into the Environment=PATH= line in the service file
+
+# 3. After installing the service, verify it works:
+sudo systemctl daemon-reload
+sudo systemctl restart multi-nanobots
+sleep 5
+pid=$(pgrep -f "nanobot.*main" | head -1)
+cat /proc/$pid/environ | tr '\0' '\n' | grep PATH
+```
+
+**Without this fix**, agents will get "command not found" errors when trying to run tools like `node`, `go`, `flutter`, `cargo`, `dotnet`, etc. via the `exec` tool.
+
+### Host Tool Access (Docker)
+
+If running agents inside Docker containers instead of bare metal, the systemd `Environment=PATH=...` approach does **not work** — host binaries don't exist inside the container's filesystem. You must install tools directly in the Docker image.
+
+Example Dockerfile snippet for common development tools:
+
+```dockerfile
+FROM python:3.12-slim
+
+# Go
+COPY --from=golang:1.23 /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Flutter
+RUN git clone https://github.com/flutter/flutter.git /opt/flutter --branch stable --depth 1
+ENV PATH="/opt/flutter/bin:${PATH}"
+
+# Rust / Cargo
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+```
+
+Only install what your agents need — each tool adds to image size. Volume-mounting host binaries (`-v /usr/local/go:/usr/local/go`) is unreliable due to shared library mismatches between host and container.
+
 ## Customization Guide
 
 Each workspace contains bootstrap files that define the agent's behavior:
@@ -284,6 +351,10 @@ rm -f logs/supervisor.sock
 # Restart
 ./start-agents.sh
 ```
+
+### Agent `exec` tool can't find node/go/flutter/cargo
+
+systemd uses a minimal PATH that doesn't include tools from version managers. Add `Environment=PATH=...` to your service file with the full PATH from your interactive shell. See "Host Tool Access" section above.
 
 ---
 
