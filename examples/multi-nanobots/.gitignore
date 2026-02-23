@@ -1,0 +1,25 @@
+# Runtime logs
+logs/
+
+# Agent sessions and state
+**/sessions/
+**/state/
+
+# Memory databases (binary)
+**/memory/*.db
+
+# Temporary files
+**/temp/
+
+# Telegram file cache
+**/telegram_files/
+
+# Supervisor runtime
+*.sock
+*.pid
+
+# OS files
+.DS_Store
+
+# Environment / secrets
+.env

@@ -1,0 +1,17 @@
+[Unit]
+Description=Multi-Nanobots Agents (supervisord)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/multi-nanobots
+ExecStart=/usr/local/bin/supervisord -c /path/to/multi-nanobots/supervisord.conf
+ExecStop=/usr/local/bin/supervisorctl -c /path/to/multi-nanobots/supervisord.conf shutdown
+ExecReload=/usr/local/bin/supervisorctl -c /path/to/multi-nanobots/supervisord.conf restart all
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
