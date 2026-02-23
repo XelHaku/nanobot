@@ -43,15 +43,25 @@ class Session:
         self.updated_at = datetime.now()
     
     def get_history(self, max_messages: int = 500) -> list[dict[str, Any]]:
-        """Get recent messages in LLM format, preserving tool metadata.
+        """Return unconsolidated messages for LLM input, preserving tool metadata.
 
+        Starts from last_consolidated to skip already-summarised history.
         The tail-slice may cut an assistant message with tool_calls while
         keeping its orphaned tool-result messages.  We trim those from the
         front so every tool result has a preceding assistant tool_call and
         every assistant tool_call has its following tool results.
         """
+        unconsolidated = self.messages[self.last_consolidated:]
+        sliced = unconsolidated[-max_messages:]
+
+        # Drop leading non-user messages to avoid orphaned tool_result blocks
+        for i, m in enumerate(sliced):
+            if m.get("role") == "user":
+                sliced = sliced[i:]
+                break
+
         out: list[dict[str, Any]] = []
-        for m in self.messages[-max_messages:]:
+        for m in sliced:
             entry: dict[str, Any] = {"role": m["role"], "content": m.get("content", "")}
             for k in ("tool_calls", "tool_call_id", "name"):
                 if k in m:
