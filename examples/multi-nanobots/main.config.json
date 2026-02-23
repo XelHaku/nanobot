@@ -23,9 +23,6 @@
       "roleIds": [],
       "siblingBots": {}
     },
-    "sendProgress": true,
-    "sendToolHints": false,
-    "sendToolResults": false
   },
   "providers": {
     "openrouter": {
