@@ -24,6 +24,8 @@ export interface InboundMessage {
   content: string;
   timestamp: number;
   isGroup: boolean;
+  participant: string;      // NEW: who sent the message in a group (msg.key.participant); empty for DMs
+  mentionedJids: string[];  // NEW: JIDs that were @mentioned in the message
 }
 
 export interface WhatsAppClientOptions {
@@ -99,6 +101,11 @@ export class WhatsAppClient {
       } else if (connection === 'open') {
         console.log('✅ Connected to WhatsApp');
         this.options.onStatus('connected');
+        // Broadcast bot's own JID so Python side can match @mentions
+        const botJid = this.sock?.user?.id || '';
+        if (botJid) {
+          this.options.onStatus(`bot_jid:${botJid}`);
+        }
       }
     });
 
@@ -128,6 +135,8 @@ export class WhatsAppClient {
           content,
           timestamp: msg.messageTimestamp as number,
           isGroup,
+          participant: (isGroup ? msg.key.participant : '') || '',
+          mentionedJids: this.extractMentionedJids(msg),
         });
       }
     });
@@ -168,6 +177,20 @@ export class WhatsAppClient {
     }
 
     return null;
+  }
+
+  private extractMentionedJids(msg: any): string[] {
+    const message = msg.message;
+    if (!message) return [];
+
+    const contextInfo =
+      message.extendedTextMessage?.contextInfo ||
+      message.imageMessage?.contextInfo ||
+      message.videoMessage?.contextInfo ||
+      message.documentMessage?.contextInfo ||
+      null;
+
+    return contextInfo?.mentionedJid || [];
   }
 
   async sendMessage(to: string, text: string): Promise<void> {

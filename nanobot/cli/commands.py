@@ -385,8 +385,8 @@ def gateway(
     heartbeat = HeartbeatService(
         workspace=config.workspace_path,
         on_heartbeat=on_heartbeat,
-        interval_s=30 * 60,  # 30 minutes
-        enabled=True
+        interval_s=config.heartbeat.interval_seconds,
+        enabled=config.heartbeat.enabled,
     )
     
     if channels.enabled_channels:

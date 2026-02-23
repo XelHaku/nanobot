@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Any
+import re
 
 from loguru import logger
 
@@ -27,7 +27,8 @@ class WhatsAppChannel(BaseChannel):
         self.config: WhatsAppConfig = config
         self._ws = None
         self._connected = False
-    
+        self._bot_jid: str = ""
+
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
         import websockets
@@ -102,39 +103,64 @@ class WhatsAppChannel(BaseChannel):
         msg_type = data.get("type")
         
         if msg_type == "message":
-            # Incoming message from WhatsApp
-            # Deprecated by whatsapp: old phone number style typically: <phone>@s.whatspp.net
             pn = data.get("pn", "")
-            # New LID sytle typically: 
             sender = data.get("sender", "")
             content = data.get("content", "")
-            
-            # Extract just the phone number or lid as chat_id
-            user_id = pn if pn else sender
+            is_group = data.get("isGroup", False)
+            participant = data.get("participant", "")
+            mentioned_jids: list[str] = data.get("mentionedJids", [])
+
+            # For group messages: use participant (the actual person who sent it)
+            # For DMs: use pn (phone-style) if available, else sender (LID-style)
+            if is_group and participant:
+                user_id = participant
+            else:
+                user_id = pn if pn else sender
+
             sender_id = user_id.split("@")[0] if "@" in user_id else user_id
-            logger.info("Sender {}", sender)
-            
-            # Handle voice transcription if it's a voice message
+            chat_id = sender  # Group JID for groups, individual JID for DMs
+
+            logger.info("WhatsApp msg from {} (group={}, chat={})", sender_id, is_group, chat_id)
+
+            # Handle voice transcription
             if content == "[Voice Message]":
-                logger.info("Voice message received from {}, but direct download from bridge is not yet supported.", sender_id)
+                logger.info("Voice message from {}, transcription not yet supported.", sender_id)
                 content = "[Voice Message: Transcription not available for WhatsApp yet]"
-            
+
+            # Group policy check
+            if is_group:
+                if not self._should_respond_in_group(content, chat_id, mentioned_jids):
+                    logger.debug(
+                        "WhatsApp: group message skipped (policy={})",
+                        self.config.group_policy,
+                    )
+                    return
+                content = self._strip_mention_keyword(content)
+
             await self._handle_message(
                 sender_id=sender_id,
-                chat_id=sender,  # Use full LID for replies
+                chat_id=chat_id,
                 content=content,
                 metadata={
                     "message_id": data.get("id"),
                     "timestamp": data.get("timestamp"),
-                    "is_group": data.get("isGroup", False)
-                }
+                    "is_group": is_group,
+                    "participant": participant,
+                    "mentioned_jids": mentioned_jids,
+                },
             )
         
         elif msg_type == "status":
-            # Connection status update
-            status = data.get("status")
+            status = data.get("status", "")
+
+            # Parse bot JID broadcast (format: "bot_jid:<jid>")
+            if isinstance(status, str) and status.startswith("bot_jid:"):
+                self._bot_jid = status[len("bot_jid:"):]
+                logger.info("WhatsApp bot JID: {}", self._bot_jid)
+                return
+
             logger.info("WhatsApp status: {}", status)
-            
+
             if status == "connected":
                 self._connected = True
             elif status == "disconnected":
@@ -146,3 +172,46 @@ class WhatsAppChannel(BaseChannel):
         
         elif msg_type == "error":
             logger.error("WhatsApp bridge error: {}", data.get('error'))
+
+    def _should_respond_in_group(
+        self, content: str, group_jid: str, mentioned_jids: list[str]
+    ) -> bool:
+        """Check if the bot should respond to a group message based on group_policy."""
+        policy = self.config.group_policy
+
+        if policy == "ignore":
+            return False
+
+        if policy == "open":
+            return True
+
+        if policy == "mention":
+            # Check native WhatsApp @mention
+            if self._bot_jid:
+                bot_number = self._bot_jid.split("@")[0].split(":")[0]
+                for jid in mentioned_jids:
+                    jid_number = jid.split("@")[0].split(":")[0]
+                    if bot_number == jid_number:
+                        return True
+
+            # Check keyword trigger
+            if self.config.mention_keyword:
+                if self.config.mention_keyword.lower() in content.lower():
+                    return True
+
+            return False
+
+        if policy == "allowlist":
+            return group_jid in self.config.group_allow_from
+
+        logger.warning("Unknown WhatsApp group_policy: {}", policy)
+        return False
+
+    def _strip_mention_keyword(self, content: str) -> str:
+        """Remove the mention keyword from message content."""
+        if not self.config.mention_keyword:
+            return content
+
+        pattern = re.compile(re.escape(self.config.mention_keyword), re.IGNORECASE)
+        cleaned = pattern.sub("", content).strip()
+        return cleaned if cleaned else content

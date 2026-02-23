@@ -221,6 +221,13 @@ class AgentLoop:
                     args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
                     logger.info("Tool call: {}({})", tool_call.name, args_str[:200])
                     result = await self.tools.execute(tool_call.name, tool_call.arguments)
+                    if on_progress and self.channels_config and self.channels_config.send_tool_results:
+                        try:
+                            text = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+                        except Exception:
+                            text = str(result)
+                        if text:
+                            await on_progress(text)
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )

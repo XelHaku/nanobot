@@ -19,6 +19,9 @@ class WhatsAppConfig(Base):
     bridge_url: str = "ws://localhost:3001"
     bridge_token: str = ""  # Shared token for bridge auth (optional, recommended)
     allow_from: list[str] = Field(default_factory=list)  # Allowed phone numbers
+    group_policy: str = "ignore"  # "ignore" | "open" | "mention" | "allowlist"
+    group_allow_from: list[str] = Field(default_factory=list)  # Group JIDs when policy=allowlist
+    mention_keyword: str = ""  # Keyword trigger for mention policy (e.g. "nanobot")
 
 
 class TelegramConfig(Base):
@@ -174,6 +177,7 @@ class ChannelsConfig(Base):
 
     send_progress: bool = True    # stream agent's text progress to the channel
     send_tool_hints: bool = False  # stream tool-call hints (e.g. read_file("…"))
+    send_tool_results: bool = False  # stream tool results to the channel
     whatsapp: WhatsAppConfig = Field(default_factory=WhatsAppConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     discord: DiscordConfig = Field(default_factory=DiscordConfig)
@@ -239,6 +243,13 @@ class GatewayConfig(Base):
     port: int = 18790
 
 
+class HeartbeatConfig(Base):
+    """Heartbeat configuration."""
+
+    enabled: bool = True
+    interval_seconds: int = 30 * 60
+
+
 class WebSearchConfig(Base):
     """Web search tool configuration."""
 
@@ -285,6 +296,7 @@ class Config(BaseSettings):
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
+    heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
 
     @property
