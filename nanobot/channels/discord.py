@@ -251,13 +251,21 @@ class DiscordChannel(BaseChannel):
         content = payload.get("content") or ""
         guild_id = payload.get("guild_id")
 
+        logger.debug(
+            "Discord msg from {} in channel {} (guild={}): {!r} | policy={} bot_id={}",
+            sender_id, channel_id, guild_id, content[:100],
+            self.config.group_policy, self._bot_user_id,
+        )
+
         if not sender_id or not channel_id:
             return
 
         if not self.is_allowed(sender_id):
+            logger.debug("Discord: sender {} not in allowFrom", sender_id)
             return
 
         if not self._should_respond(content, guild_id, channel_id):
+            logger.debug("Discord: skipping (policy={}, mention check failed)", self.config.group_policy)
             return
 
         content = self._strip_bot_mention(content)
