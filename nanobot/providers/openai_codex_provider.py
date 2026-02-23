@@ -196,6 +196,16 @@ def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[st
         if item.get("type") != "function_call_output" or item.get("call_id") in known_call_ids
     ]
 
+    # Drop orphaned function_call items whose function_call_output is missing
+    # (bot crashed after calling a tool, before receiving the result).
+    responded_call_ids = {
+        item["call_id"] for item in input_items if item.get("type") == "function_call_output"
+    }
+    input_items = [
+        item for item in input_items
+        if item.get("type") != "function_call" or item.get("call_id") in responded_call_ids
+    ]
+
     return system_prompt, input_items
 
 

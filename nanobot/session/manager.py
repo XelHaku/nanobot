@@ -80,6 +80,30 @@ class Session:
             else:
                 break
 
+        # Drop orphaned assistant tool_calls from the END of the window.
+        # These occur when the bot crashed after calling a tool but before
+        # receiving the result — the assistant message has tool_calls but no
+        # following tool-result messages exist for them.
+        while out:
+            last = out[-1]
+            if last["role"] == "assistant" and last.get("tool_calls"):
+                expected_ids = {
+                    tc.get("id") for tc in last["tool_calls"] if tc.get("id")
+                }
+                # Collect tool_call_ids that appear AFTER this message — but
+                # since this is the last message there are none, so just check
+                # the preceding messages (there shouldn't be any following ones).
+                following_ids = {
+                    m.get("tool_call_id") for m in out[out.index(last) + 1:]
+                    if m["role"] == "tool" and m.get("tool_call_id")
+                }
+                if not expected_ids.issubset(following_ids):
+                    out.pop()
+                else:
+                    break
+            else:
+                break
+
         return out
     
     def clear(self) -> None:
