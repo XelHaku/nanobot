@@ -33,6 +33,7 @@ class TelegramConfig(Base):
     allow_from: list[str] = Field(default_factory=list)  # Allowed user IDs or usernames
     proxy: str | None = None  # HTTP/SOCKS5 proxy URL, e.g. "http://127.0.0.1:7890" or "socks5://127.0.0.1:1080"
     reply_to_message: bool = False  # If true, bot replies quote the original message
+    users_file: str = ""  # Path to users JSON file with roles/permissions (same format as WhatsApp)
 
 
 class FeishuConfig(Base):
@@ -295,6 +296,7 @@ class ToolsConfig(Base):
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
     restrict_to_workspace: bool = False  # If true, restrict all tool access to workspace directory
+    allowed_dir: str = ""  # Override: restrict tool access to this directory instead of workspace (e.g. parent repo)
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 

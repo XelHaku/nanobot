@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
+from pathlib import Path
 from loguru import logger
 from telegram import BotCommand, Update, ReplyParameters
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -126,6 +128,54 @@ class TelegramChannel(BaseChannel):
         self._app: Application | None = None
         self._chat_ids: dict[str, int] = {}  # Map sender_id to chat_id for replies
         self._typing_tasks: dict[str, asyncio.Task] = {}  # chat_id -> typing loop task
+        self._users: dict[str, dict] = {}  # telegram_id -> user record
+        self._permissions: dict[str, dict] = {}  # role -> permissions
+        self._load_users()
+
+    def _load_users(self) -> None:
+        """Load users file if configured."""
+        if not self.config.users_file:
+            return
+        path = Path(self.config.users_file)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        if not path.exists():
+            logger.warning("Telegram users file not found: {}", path)
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self._permissions = data.get("permisos", {})
+            for user in data.get("usuarios", []):
+                tid = str(user.get("telegram_id", ""))
+                if tid:
+                    self._users[tid] = user
+            logger.info("Loaded {} telegram users from {}", len(self._users), path)
+        except Exception as e:
+            logger.error("Failed to load telegram users file: {}", e)
+
+    def _resolve_user(self, sender_id: str) -> dict | None:
+        """Resolve a Telegram sender_id to a user record."""
+        if not self._users:
+            return None
+        # sender_id may be "12345|username", extract numeric part
+        uid = sender_id.split("|")[0]
+        return self._users.get(uid)
+
+    def _get_user_permissions(self, user: dict) -> dict:
+        """Get merged permissions for a user based on their roles."""
+        roles = user.get("roles", [])
+        puede: set[str] = set()
+        no_puede: set[str] = set()
+        for role in roles:
+            perms = self._permissions.get(role, {})
+            for p in perms.get("puede", []):
+                puede.add(p)
+            for p in perms.get("no_puede", []):
+                no_puede.add(p)
+        if "*" in puede:
+            return {"puede": ["*"]}
+        no_puede -= puede
+        return {"puede": sorted(puede), "no_puede": sorted(no_puede)}
     
     async def start(self) -> None:
         """Start the Telegram bot with long polling."""
@@ -308,14 +358,41 @@ class TelegramChannel(BaseChannel):
         sid = str(user.id)
         return f"{sid}|{user.username}" if user.username else sid
 
+    def _build_user_meta(self, sender_id: str, user, *, message_id: int | None = None, is_group: bool = False) -> dict:
+        """Build metadata dict with user identity and permissions."""
+        meta: dict = {
+            "user_id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "is_group": is_group,
+        }
+        if message_id is not None:
+            meta["message_id"] = message_id
+        user_record = self._resolve_user(sender_id)
+        if user_record:
+            meta["user_name"] = user_record.get("nombre", "")
+            meta["user_phone"] = user_record.get("telefono", "")
+            meta["user_roles"] = user_record.get("roles", [])
+            meta["user_permissions"] = self._get_user_permissions(user_record)
+            meta["user_groups"] = user_record.get("grupos", [])
+        else:
+            meta["user_name"] = f"No registrado ({user.first_name or sender_id})"
+            meta["user_roles"] = []
+            meta["user_permissions"] = {"puede": [], "no_puede": ["*"]}
+        return meta
+
     async def _forward_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Forward slash commands to the bus for unified handling in AgentLoop."""
         if not update.message or not update.effective_user:
             return
+        user = update.effective_user
+        sender_id = self._sender_id(user)
+        meta = self._build_user_meta(sender_id, user, message_id=update.message.message_id)
         await self._handle_message(
-            sender_id=self._sender_id(update.effective_user),
+            sender_id=sender_id,
             chat_id=str(update.message.chat_id),
             content=update.message.text,
+            metadata=meta,
         )
     
     async def _on_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -401,19 +478,20 @@ class TelegramChannel(BaseChannel):
         # Start typing indicator before processing
         self._start_typing(str_chat_id)
         
+        # Build metadata with user role info
+        meta = self._build_user_meta(
+            sender_id, user,
+            message_id=message.message_id,
+            is_group=message.chat.type != "private",
+        )
+
         # Forward to the message bus
         await self._handle_message(
             sender_id=sender_id,
             chat_id=str_chat_id,
             content=content,
             media=media_paths,
-            metadata={
-                "message_id": message.message_id,
-                "user_id": user.id,
-                "username": user.username,
-                "first_name": user.first_name,
-                "is_group": message.chat.type != "private"
-            }
+            metadata=meta,
         )
     
     def _start_typing(self, chat_id: str) -> None:
