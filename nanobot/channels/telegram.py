@@ -132,6 +132,15 @@ class TelegramChannel(BaseChannel):
         self._permissions: dict[str, dict] = {}  # role -> permissions
         self._load_users()
 
+    def is_allowed(self, sender_id: str) -> bool:
+        """Use usuarios.json as source of truth when allowFrom is empty."""
+        allow_list = getattr(self.config, "allow_from", [])
+        if allow_list:
+            return super().is_allowed(sender_id)
+        if self._users:
+            return self._resolve_user(str(sender_id)) is not None
+        return True
+
     def _load_users(self) -> None:
         """Load users file if configured."""
         if not self.config.users_file:
