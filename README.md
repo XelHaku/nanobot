@@ -198,6 +198,24 @@ Connect nanobot to your favorite chat platform.
 > You can find your **User ID** in Telegram settings. It is shown as `@yourUserId`.
 > Copy this value **without the `@` symbol** and paste it into the config file.
 
+**Using a users file instead of allowFrom:**
+
+Instead of hardcoding IDs in `allowFrom`, you can point to a JSON users file. When `allowFrom` is empty and `usersFile` is set, the channel checks the users file to determine access:
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "token": "YOUR_BOT_TOKEN",
+      "allowFrom": [],
+      "usersFile": "./usuarios.json"
+    }
+  }
+}
+```
+
+The users file should contain a `usuarios` array with `telegram_id` fields. See the [Users File](#users-file) section below.
 
 **3. Run**
 
@@ -311,7 +329,7 @@ nanobot gateway
 <details>
 <summary><b>WhatsApp</b></summary>
 
-Requires **Node.js ≥18**.
+Requires **Node.js ≥20** (for `globalThis.crypto.subtle` support used by Baileys).
 
 **1. Link device**
 
@@ -332,6 +350,24 @@ nanobot channels login
   }
 }
 ```
+
+**Using a users file instead of allowFrom:**
+
+```json
+{
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "allowFrom": [],
+      "usersFile": "./usuarios.json",
+      "groupPolicy": "mention",
+      "mentionKeyword": "botname"
+    }
+  }
+}
+```
+
+When `allowFrom` is empty and `usersFile` is set, the channel resolves users by phone number from the users file. Only registered users get access. See the [Users File](#users-file) section below.
 
 **3. Run** (two terminals)
 
@@ -808,6 +844,125 @@ MCP tools are automatically discovered and registered on startup. The LLM can us
 |--------|---------|-------------|
 | `tools.restrictToWorkspace` | `false` | When `true`, restricts **all** agent tools (shell, file read/write/edit, list) to the workspace directory. Prevents path traversal and out-of-scope access. |
 | `channels.*.allowFrom` | `[]` (allow all) | Whitelist of user IDs. Empty = allow everyone; non-empty = only listed users can interact. |
+| `channels.*.usersFile` | `""` | Path to a JSON users file. When set and `allowFrom` is empty, access is controlled by the users file instead. |
+
+### Users File
+
+For multi-user deployments, nanobot supports a **users file** — a single JSON file that serves as the source of truth for user identity, roles, and permissions across all channels (Telegram, WhatsApp, Discord, etc.).
+
+<details>
+<summary><b>Multi-User Enterprise System</b></summary>
+
+#### How It Works
+
+1. Each channel (`telegram`, `whatsapp`) can point to a shared `usersFile` in its config
+2. When `allowFrom` is empty and `usersFile` is set, only users in the file can access the bot
+3. User identity (name, roles, permissions) is injected into every LLM prompt as `[Runtime Context]`
+4. The LLM sees who is talking and what they're allowed to do — enabling role-based responses
+
+#### Users File Format
+
+```json
+{
+  "descripcion": "Users, roles, and access control",
+  "grupos": [
+    { "nombre": "Team Chat", "id": "120363422678028970@g.us" }
+  ],
+  "permisos": {
+    "owner": {
+      "descripcion": "Full access — no restrictions",
+      "puede": ["*"]
+    },
+    "admin": {
+      "descripcion": "Administrative access",
+      "puede": ["view-all", "edit-all", "manage-users"],
+      "no_puede": ["delete-system"]
+    },
+    "viewer": {
+      "descripcion": "Read-only access",
+      "puede": ["view-reports", "view-status"],
+      "no_puede": ["edit", "delete", "costs", "financials"]
+    }
+  },
+  "usuarios": [
+    {
+      "nombre": "Alice",
+      "telefono": "+1234567890",
+      "telegram_id": "123456789",
+      "roles": ["owner"],
+      "grupos": ["Team Chat"]
+    },
+    {
+      "nombre": "Bob",
+      "telefono": "+0987654321",
+      "telegram_id": "987654321",
+      "roles": ["viewer"],
+      "grupos": ["Team Chat"]
+    }
+  ]
+}
+```
+
+#### User Resolution by Channel
+
+| Channel | Lookup Field | Format |
+|---------|-------------|--------|
+| **Telegram** | `telegram_id` | Numeric user ID (e.g. `"123456789"`) |
+| **WhatsApp** | `telefono` | Phone number with country code (e.g. `"+1234567890"`) — matched by last 10 digits |
+
+#### Runtime Context Injection
+
+Every message sent to the LLM includes a `[Runtime Context]` block with the resolved user's identity:
+
+```
+[Runtime Context]
+Current Time: 2026-02-25 14:30 (Tuesday) (CST)
+Channel: telegram
+Chat ID: 123456789
+User: Alice (roles: owner)
+Permissions: full access
+```
+
+For unregistered users:
+```
+[Runtime Context]
+User: No registrado (Unknown)
+Cannot: *
+```
+
+This allows the LLM's system prompt (workspace instructions) to enforce role-based access control — e.g., only showing cost data to owners, restricting write operations for viewers, or denying access to unregistered users entirely.
+
+#### Configuration
+
+Point both channels to the same file:
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "token": "YOUR_BOT_TOKEN",
+      "allowFrom": [],
+      "usersFile": "./usuarios.json"
+    },
+    "whatsapp": {
+      "enabled": true,
+      "allowFrom": [],
+      "usersFile": "./usuarios.json"
+    }
+  }
+}
+```
+
+#### Key Behaviors
+
+- **`allowFrom` takes priority**: If `allowFrom` has entries, it's used as the allowlist (original behavior). `usersFile` is only used when `allowFrom` is empty.
+- **Multi-role users**: If a user has multiple roles, permissions are merged (union of `puede`, intersection avoids `no_puede` overrides).
+- **Unregistered users**: Get explicit denial (`no_puede: ["*"]`) — the LLM can use this to refuse service gracefully.
+- **Single source of truth**: One file for all channels — add a user once, they work everywhere.
+- **Group messages** (WhatsApp): The sender's identity is resolved from the participant, not the group. Group-level policies (`groupPolicy: "mention"`) still apply.
+
+</details>
 
 
 ## CLI Reference
