@@ -240,6 +240,9 @@ class AgentLoop:
                     )
             else:
                 final_content = self._strip_think(response.content)
+                messages = self.context.add_assistant_message(
+                    messages, final_content,
+                )
                 break
 
         if final_content is None and iteration >= self.max_iterations:
@@ -247,6 +250,9 @@ class AgentLoop:
             final_content = (
                 f"I reached the maximum number of tool call iterations ({self.max_iterations}) "
                 "without completing the task. You can try breaking the task into smaller steps."
+            )
+            messages = self.context.add_assistant_message(
+                messages, final_content,
             )
 
         return final_content, tools_used, messages
