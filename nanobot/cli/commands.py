@@ -288,6 +288,9 @@ def _make_provider(config: Config):
 def gateway(
     port: int = typer.Option(18790, "--port", "-p", help="Gateway port"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    users_whatsapp: Path = typer.Option(
+        None, "--users-whatsapp", help="Path to WhatsApp users JSON file (roles/permissions)",
+    ),
 ):
     """Start the nanobot gateway."""
     from nanobot.config.loader import get_data_dir
@@ -306,6 +309,10 @@ def gateway(
     console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
 
     config = _load()
+
+    # CLI flag overrides config for WhatsApp users file
+    if users_whatsapp:
+        config.channels.whatsapp.users_file = str(users_whatsapp.resolve())
     bus = MessageBus()
     provider = _make_provider(config)
     session_manager = SessionManager(config.workspace_path)

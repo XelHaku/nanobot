@@ -29,6 +29,81 @@ class WhatsAppChannel(BaseChannel):
         self._connected = False
         self._bot_jid: str = ""
 
+        # User identity
+        self._users: dict[str, dict] = {}  # phone_suffix -> user record
+        self._permissions: dict[str, dict] = {}  # role -> permissions
+        self._groups: dict[str, dict] = {}  # group name -> group info
+        self._load_users()
+
+    def _load_users(self) -> None:
+        """Load users file if configured."""
+        if not self.config.users_file:
+            return
+
+        from pathlib import Path
+        path = Path(self.config.users_file)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+
+        if not path.exists():
+            logger.warning("Users file not found: {}", path)
+            return
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self._permissions = data.get("permisos", {})
+            self._groups = {g["nombre"]: g for g in data.get("grupos", [])}
+
+            for user in data.get("usuarios", []):
+                phone = user.get("telefono", "")
+                normalized = phone.replace("+", "").replace(" ", "").replace("-", "")
+                if len(normalized) >= 10:
+                    suffix = normalized[-10:]
+                    self._users[suffix] = user
+                self._users[normalized] = user
+
+            logger.info("Loaded {} users from {}", len(data.get("usuarios", [])), path)
+        except Exception as e:
+            logger.error("Failed to load users file: {}", e)
+
+    def _resolve_user(self, sender_id: str) -> dict | None:
+        """Resolve a sender_id to a user record."""
+        if not self._users:
+            return None
+
+        normalized = "".join(c for c in sender_id if c.isdigit())
+
+        if normalized in self._users:
+            return self._users[normalized]
+
+        if len(normalized) >= 10:
+            suffix = normalized[-10:]
+            if suffix in self._users:
+                return self._users[suffix]
+
+        return None
+
+    def _get_user_permissions(self, user: dict) -> dict:
+        """Get merged permissions for a user based on their roles."""
+        roles = user.get("roles", [])
+        puede: set[str] = set()
+        no_puede: set[str] = set()
+
+        for role in roles:
+            perm = self._permissions.get(role, {})
+            role_puede = perm.get("puede", [])
+            if "*" in role_puede:
+                return {"puede": ["*"], "no_puede": []}
+            puede.update(role_puede)
+
+        for role in roles:
+            perm = self._permissions.get(role, {})
+            for item in perm.get("no_puede", []):
+                if item not in puede:
+                    no_puede.add(item)
+
+        return {"puede": sorted(puede), "no_puede": sorted(no_puede)}
+
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
         import websockets
@@ -118,6 +193,20 @@ class WhatsAppChannel(BaseChannel):
                 user_id = pn if pn else sender
 
             sender_id = user_id.split("@")[0] if "@" in user_id else user_id
+
+            # Resolve user identity
+            user_record = self._resolve_user(sender_id)
+            user_meta = {}
+            if user_record:
+                user_perms = self._get_user_permissions(user_record)
+                user_meta = {
+                    "user_name": user_record.get("nombre", ""),
+                    "user_phone": user_record.get("telefono", ""),
+                    "user_roles": user_record.get("roles", []),
+                    "user_permissions": user_perms,
+                    "user_groups": user_record.get("grupos", []),
+                }
+
             chat_id = sender  # Group JID for groups, individual JID for DMs
 
             logger.info("WhatsApp msg from {} (group={}, chat={})", sender_id, is_group, chat_id)
@@ -147,6 +236,7 @@ class WhatsAppChannel(BaseChannel):
                     "is_group": is_group,
                     "participant": participant,
                     "mentioned_jids": mentioned_jids,
+                    **user_meta,
                 },
             )
         

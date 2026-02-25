@@ -22,6 +22,7 @@ class WhatsAppConfig(Base):
     group_policy: str = "ignore"  # "ignore" | "open" | "mention" | "allowlist"
     group_allow_from: list[str] = Field(default_factory=list)  # Group JIDs when policy=allowlist
     mention_keyword: str = ""  # Keyword trigger for mention policy (e.g. "nanobot")
+    users_file: str = ""  # Path to users JSON file with roles/permissions
 
 
 class TelegramConfig(Base):

@@ -109,6 +109,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
         user_content: str | list[dict[str, Any]],
         channel: str | None,
         chat_id: str | None,
+        metadata: dict[str, Any] | None = None,
     ) -> str | list[dict[str, Any]]:
         """Append dynamic runtime context to the tail of the user message."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
@@ -116,6 +117,23 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
         lines = [f"Current Time: {now} ({tz})"]
         if channel and chat_id:
             lines += [f"Channel: {channel}", f"Chat ID: {chat_id}"]
+        if metadata:
+            if metadata.get("user_name"):
+                roles_str = ", ".join(metadata["user_roles"]) if metadata.get("user_roles") else "unknown"
+                lines.append(f"User: {metadata['user_name']} (roles: {roles_str})")
+            if metadata.get("user_phone"):
+                lines.append(f"Phone: {metadata['user_phone']}")
+            if metadata.get("user_permissions"):
+                perms = metadata["user_permissions"]
+                if perms.get("puede") == ["*"]:
+                    lines.append("Permissions: full access")
+                else:
+                    if perms.get("puede"):
+                        lines.append(f"Can: {', '.join(perms['puede'])}")
+                    if perms.get("no_puede"):
+                        lines.append(f"Cannot: {', '.join(perms['no_puede'])}")
+            if metadata.get("is_group"):
+                lines.append("Context: group message")
         block = "[Runtime Context]\n" + "\n".join(lines)
         if isinstance(user_content, str):
             return f"{user_content}\n\n{block}"
@@ -141,6 +159,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
         media: list[str] | None = None,
         channel: str | None = None,
         chat_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Build the complete message list for an LLM call.
@@ -167,7 +186,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
 
         # Current message (with optional image attachments)
         user_content = self._build_user_content(current_message, media)
-        user_content = self._inject_runtime_context(user_content, channel, chat_id)
+        user_content = self._inject_runtime_context(user_content, channel, chat_id, metadata)
         messages.append({"role": "user", "content": user_content})
 
         return messages
