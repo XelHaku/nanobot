@@ -136,6 +136,18 @@ class ChannelManager:
                 logger.info("QQ channel enabled")
             except ImportError as e:
                 logger.warning("QQ channel not available: {}", e)
+
+        # NaviVox channel
+        if self.config.channels.navivox.enabled:
+            try:
+                from nanobot.channels.navivox import NaviVoxChannel
+                self.channels["navivox"] = NaviVoxChannel(
+                    self.config.channels.navivox,
+                    self.bus,
+                )
+                logger.info("NaviVox channel enabled")
+            except ImportError as e:
+                logger.warning("NaviVox channel not available: {}", e)
     
     async def _start_channel(self, name: str, channel: BaseChannel) -> None:
         """Start a channel and log any exceptions."""
