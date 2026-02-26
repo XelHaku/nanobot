@@ -193,6 +193,24 @@ class QQConfig(Base):
     allow_from: list[str] = Field(default_factory=list)  # Allowed user openids (empty = public access)
 
 
+class NaviVoxDevice(Base):
+    """Approved NaviVox device (Ed25519 public key)."""
+
+    device_id: str = ""
+    public_key: str = ""  # base64-encoded Ed25519 public key
+
+
+class NaviVoxConfig(Base):
+    """NaviVox (voice) channel configuration."""
+
+    enabled: bool = False
+    host: str = "0.0.0.0"
+    port: int = 18910
+    allow_from: list[str] = Field(default_factory=list)
+    auth_token: str = ""
+    allowed_devices: list[NaviVoxDevice] = Field(default_factory=list)
+
+
 class ChannelsConfig(Base):
     """Configuration for chat channels."""
 
@@ -209,6 +227,7 @@ class ChannelsConfig(Base):
     slack: SlackConfig = Field(default_factory=SlackConfig)
     qq: QQConfig = Field(default_factory=QQConfig)
     matrix: MatrixConfig = Field(default_factory=MatrixConfig)
+    navivox: NaviVoxConfig = Field(default_factory=NaviVoxConfig)
 
 
 class AgentDefaults(Base):

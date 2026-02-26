@@ -628,6 +628,21 @@ channels_app = typer.Typer(help="Manage channels")
 app.add_typer(channels_app, name="channels")
 
 
+@channels_app.command("navivox-attempts")
+def channels_navivox_attempts(
+    tail: int = typer.Option(50, "--tail", "-n", help="Tail N attempts"),
+):
+    """Show recent NaviVox connection attempts."""
+    from nanobot.utils.helpers import get_data_path
+    path = get_data_path() / "navivox" / "attempts.jsonl"
+    if not path.exists():
+        console.print("No attempts log found.")
+        return
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for line in lines[-tail:]:
+        console.print(line)
+
+
 @channels_app.command("status")
 def channels_status():
     """Show channel status."""
