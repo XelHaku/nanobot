@@ -312,7 +312,7 @@ class TelegramChannel(BaseChannel):
                 param = "photo" if media_type == "photo" else media_type if media_type in ("voice", "audio") else "document"
                 with open(media_path, 'rb') as f:
                     await sender(
-                        chat_id=chat_id, 
+                        chat_id=chat_id,
                         **{param: f},
                         reply_parameters=reply_params
                     )
