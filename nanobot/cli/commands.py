@@ -267,21 +267,13 @@ def gateway(
     ),
 ):
     """Start the nanobot gateway."""
-<<<<<<< HEAD
-    from nanobot.bus.queue import MessageBus
-=======
->>>>>>> upstream/main
     from nanobot.agent.loop import AgentLoop
     from nanobot.bus.queue import MessageBus
     from nanobot.channels.manager import ChannelManager
-    from nanobot.config.loader import get_data_dir, load_config
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronJob
     from nanobot.heartbeat.service import HeartbeatService
-<<<<<<< HEAD
-=======
     from nanobot.session.manager import SessionManager
->>>>>>> upstream/main
 
     if verbose:
         import logging
@@ -289,12 +281,8 @@ def gateway(
 
     console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
 
-<<<<<<< HEAD
 
     config = _load()
-=======
-    config = load_config()
->>>>>>> upstream/main
     sync_workspace_templates(config.workspace_path)
 
     # CLI flag overrides config for WhatsApp users file
@@ -461,24 +449,13 @@ def agent(
     logs: bool = typer.Option(False, "--logs/--no-logs", help="Show nanobot runtime logs during chat"),
 ):
     """Interact with the agent directly."""
-<<<<<<< HEAD
-    from nanobot.bus.queue import MessageBus
-    from nanobot.agent.loop import AgentLoop
-    from nanobot.cron.service import CronService
     from loguru import logger
 
+    from nanobot.agent.loop import AgentLoop
+    from nanobot.bus.queue import MessageBus
+    from nanobot.cron.service import CronService
 
     config = _load()
-=======
-    from loguru import logger
-
-    from nanobot.agent.loop import AgentLoop
-    from nanobot.bus.queue import MessageBus
-    from nanobot.config.loader import get_data_dir, load_config
-    from nanobot.cron.service import CronService
-
-    config = load_config()
->>>>>>> upstream/main
     sync_workspace_templates(config.workspace_path)
 
     bus = MessageBus()
@@ -812,13 +789,7 @@ def channels_login():
     """Link device via QR code."""
     import subprocess
 
-<<<<<<< HEAD
     config = _load()
-=======
-    from nanobot.config.loader import load_config
-
-    config = load_config()
->>>>>>> upstream/main
     bridge_dir = _get_bridge_dir()
 
     console.print(f"{__logo__} Starting bridge...")
@@ -850,14 +821,9 @@ def cron_list(
 ):
     """List scheduled jobs."""
     from nanobot.cron.service import CronService
-<<<<<<< HEAD
-    
+
     config = _load()
     store_path = _cron_store_path(config)
-=======
-
-    store_path = get_data_dir() / "cron" / "jobs.json"
->>>>>>> upstream/main
     service = CronService(store_path)
 
     jobs = service.list_jobs(include_disabled=all)
@@ -917,12 +883,8 @@ def cron_add(
     """Add a scheduled job."""
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronSchedule
-<<<<<<< HEAD
     config = _load()
-    
-=======
 
->>>>>>> upstream/main
     if tz and not cron_expr:
         console.print("[red]Error: --tz can only be used with --cron[/red]")
         raise typer.Exit(1)
@@ -939,13 +901,8 @@ def cron_add(
     else:
         console.print("[red]Error: Must specify --every, --cron, or --at[/red]")
         raise typer.Exit(1)
-<<<<<<< HEAD
-    
-    store_path = _cron_store_path(config)
-=======
 
-    store_path = get_data_dir() / "cron" / "jobs.json"
->>>>>>> upstream/main
+    store_path = _cron_store_path(config)
     service = CronService(store_path)
 
     try:
@@ -970,14 +927,9 @@ def cron_remove(
 ):
     """Remove a scheduled job."""
     from nanobot.cron.service import CronService
-<<<<<<< HEAD
     config = _load()
-    
-    store_path = _cron_store_path(config)
-=======
 
-    store_path = get_data_dir() / "cron" / "jobs.json"
->>>>>>> upstream/main
+    store_path = _cron_store_path(config)
     service = CronService(store_path)
 
     if service.remove_job(job_id):
@@ -993,14 +945,9 @@ def cron_enable(
 ):
     """Enable or disable a job."""
     from nanobot.cron.service import CronService
-<<<<<<< HEAD
     config = _load()
-    
-    store_path = _cron_store_path(config)
-=======
 
-    store_path = get_data_dir() / "cron" / "jobs.json"
->>>>>>> upstream/main
+    store_path = _cron_store_path(config)
     service = CronService(store_path)
 
     job = service.enable_job(job_id, enabled=not disable)
@@ -1018,13 +965,9 @@ def cron_run(
 ):
     """Manually run a job."""
     from loguru import logger
-<<<<<<< HEAD
-=======
 
     from nanobot.agent.loop import AgentLoop
     from nanobot.bus.queue import MessageBus
-    from nanobot.config.loader import get_data_dir, load_config
->>>>>>> upstream/main
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronJob
     logger.disable("nanobot")
@@ -1086,11 +1029,7 @@ def cron_run(
 @app.command()
 def status():
     """Show nanobot status."""
-<<<<<<< HEAD
     from nanobot.config.loader import get_config_path
-=======
-    from nanobot.config.loader import get_config_path, load_config
->>>>>>> upstream/main
 
     config_path = get_config_path()
     config = _load()
