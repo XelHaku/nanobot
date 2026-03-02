@@ -31,7 +31,6 @@ class WhatsAppChannel(BaseChannel):
         self._bot_jid: str = ""
         self._processed_message_ids: OrderedDict[str, None] = OrderedDict()
 
-<<<<<<< HEAD
         # User identity
         self._users: dict[str, dict] = {}  # phone_suffix -> user record
         self._permissions: dict[str, dict] = {}  # role -> permissions
@@ -43,10 +42,8 @@ class WhatsAppChannel(BaseChannel):
         allow_list = getattr(self.config, "allow_from", [])
         if allow_list:
             return super().is_allowed(sender_id)
-        # No allowFrom - fall back to users file
         if self._users:
             return self._resolve_user(str(sender_id)) is not None
-        # No users file either - allow everyone (dev mode)
         return True
 
     def _load_users(self) -> None:
@@ -119,8 +116,6 @@ class WhatsAppChannel(BaseChannel):
 
         return {"puede": sorted(puede), "no_puede": sorted(no_puede)}
 
-=======
->>>>>>> upstream/main
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
         import websockets

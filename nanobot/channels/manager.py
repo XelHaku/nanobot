@@ -137,7 +137,6 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("QQ channel not available: {}", e)
 
-<<<<<<< HEAD
         # NaviVox channel
         if self.config.channels.navivox.enabled:
             try:
@@ -150,8 +149,6 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("NaviVox channel not available: {}", e)
 
-=======
->>>>>>> upstream/main
         # Matrix channel
         if self.config.channels.matrix.enabled:
             try:

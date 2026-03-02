@@ -5,11 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-<<<<<<< HEAD
 from pathlib import Path
-=======
 
->>>>>>> upstream/main
 from loguru import logger
 from telegram import BotCommand, ReplyParameters, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
@@ -137,7 +134,6 @@ class TelegramChannel(BaseChannel):
         self._permissions: dict[str, dict] = {}  # role -> permissions
         self._media_group_buffers: dict[str, dict] = {}
         self._media_group_tasks: dict[str, asyncio.Task] = {}
-<<<<<<< HEAD
         self._load_users()
 
     def is_allowed(self, sender_id: str) -> bool:
@@ -193,10 +189,7 @@ class TelegramChannel(BaseChannel):
             return {"puede": ["*"]}
         no_puede -= puede
         return {"puede": sorted(puede), "no_puede": sorted(no_puede)}
-    
-=======
 
->>>>>>> upstream/main
     async def start(self) -> None:
         """Start the Telegram bot with long polling."""
         if not self.config.token:
@@ -525,16 +518,13 @@ class TelegramChannel(BaseChannel):
 
         # Start typing indicator before processing
         self._start_typing(str_chat_id)
-<<<<<<< HEAD
-        
+
         # Build metadata with user role info
         meta = self._build_user_meta(
             sender_id, user,
             message_id=message.message_id,
             is_group=message.chat.type != "private",
         )
-=======
->>>>>>> upstream/main
 
         # Forward to the message bus
         await self._handle_message(
