@@ -1,0 +1,215 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1771966553155,
+  "projectRoot": "/home/xel/git/salma/salmita/nanobot",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "pytest",
+        "version": null,
+        "category": "testing"
+      }
+    ],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "examples",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "bridge": {
+      "path": "bridge",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1771966553150,
+      "keyFiles": [
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "case": {
+      "path": "case",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1771966553153,
+      "keyFiles": [
+        "code.gif",
+        "memory.gif",
+        "scedule.gif",
+        "search.gif"
+      ]
+    },
+    "examples": {
+      "path": "examples",
+      "purpose": "Example code",
+      "fileCount": 0,
+      "lastAccessed": 1771966553153,
+      "keyFiles": []
+    },
+    "nanobot": {
+      "path": "nanobot",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1771966553153,
+      "keyFiles": [
+        "__init__.py",
+        "__main__.py"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 11,
+      "lastAccessed": 1771966553153,
+      "keyFiles": [
+        "test_cli_input.py",
+        "test_commands.py",
+        "test_consolidate_offset.py",
+        "test_context_prompt_cache.py",
+        "test_cron_commands.py"
+      ]
+    },
+    "bridge/src": {
+      "path": "bridge/src",
+      "purpose": "Source code",
+      "fileCount": 4,
+      "lastAccessed": 1771966553154,
+      "keyFiles": [
+        "index.ts",
+        "server.ts",
+        "types.d.ts"
+      ]
+    },
+    "nanobot/config": {
+      "path": "nanobot/config",
+      "purpose": "Configuration files",
+      "fileCount": 3,
+      "lastAccessed": 1771966553154,
+      "keyFiles": [
+        "__init__.py",
+        "loader.py",
+        "schema.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "nanobot/channels/whatsapp.py",
+      "accessCount": 9,
+      "lastAccessed": 1772045443828,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 7,
+      "lastAccessed": 1772045333707,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/agent/context.py",
+      "accessCount": 6,
+      "lastAccessed": 1772035277908,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 5,
+      "lastAccessed": 1772045433620,
+      "type": "directory"
+    },
+    {
+      "path": "nanobot/agent/loop.py",
+      "accessCount": 4,
+      "lastAccessed": 1772035249162,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/config/schema.py",
+      "accessCount": 3,
+      "lastAccessed": 1772035195294,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/cli/commands.py",
+      "accessCount": 2,
+      "lastAccessed": 1772035297520,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/channels/base.py",
+      "accessCount": 2,
+      "lastAccessed": 1772045449197,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/channels/manager.py",
+      "accessCount": 1,
+      "lastAccessed": 1772035113347,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/bus/events.py",
+      "accessCount": 1,
+      "lastAccessed": 1772035118975,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/session/manager.py",
+      "accessCount": 1,
+      "lastAccessed": 1772035123819,
+      "type": "file"
+    },
+    {
+      "path": "bridge/package.json",
+      "accessCount": 1,
+      "lastAccessed": 1772045013854,
+      "type": "file"
+    },
+    {
+      "path": "bridge/src/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1772045014308,
+      "type": "file"
+    },
+    {
+      "path": "nanobot/channels",
+      "accessCount": 1,
+      "lastAccessed": 1772045437896,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

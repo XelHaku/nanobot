@@ -143,7 +143,8 @@ class TelegramChannel(BaseChannel):
             return super().is_allowed(sender_id)
         if self._users:
             return self._resolve_user(str(sender_id)) is not None
-        return True
+        # No users file — deny by default
+        return False
 
     def _load_users(self) -> None:
         """Load users file if configured."""
