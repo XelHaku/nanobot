@@ -31,6 +31,7 @@ class WhatsAppChannel(BaseChannel):
         self._bot_jid: str = ""
         self._processed_message_ids: OrderedDict[str, None] = OrderedDict()
 
+<<<<<<< HEAD
         # User identity
         self._users: dict[str, dict] = {}  # phone_suffix -> user record
         self._permissions: dict[str, dict] = {}  # role -> permissions
@@ -118,6 +119,8 @@ class WhatsAppChannel(BaseChannel):
 
         return {"puede": sorted(puede), "no_puede": sorted(no_puede)}
 
+=======
+>>>>>>> upstream/main
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
         import websockets
